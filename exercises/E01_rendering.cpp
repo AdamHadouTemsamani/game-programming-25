@@ -4,6 +4,8 @@
 
 #define ENABLE_DIAGNOSTICS
 #define NUM_ASTEROIDS 10
+#define PROJECTILE_POOL_SIZE 16
+
 
 
 #define VALIDATE(expression) if(!(expression)) { SDL_Log("%s\n", SDL_GetError()); }
@@ -28,6 +30,7 @@ struct SDLContext
 	bool btn_pressed_down  = false;
 	bool btn_pressed_left  = false;
 	bool btn_pressed_right = false;
+	bool btn_pressed_fire  = false;
 };
 
 struct Entity
@@ -41,12 +44,24 @@ struct Entity
 	SDL_FRect    texture_rect;
 };
 
+struct Projectile
+{
+	SDL_FPoint position;
+	float      size;
+	float      velocity;
+
+	SDL_FRect  rect;
+	bool	   active;
+};
+
 struct GameState
 {
 	Entity player;
 	Entity asteroids[NUM_ASTEROIDS];
+	Projectile projectiles[PROJECTILE_POOL_SIZE];
 
-	SDL_Texture* texture_atlas;
+	SDL_Texture* texture_atlas;	
+	int player_score;
 };
 
 static float distance_between(SDL_FPoint a, SDL_FPoint b)
@@ -63,10 +78,95 @@ static float distance_between_sq(SDL_FPoint a, SDL_FPoint b)
 	return dx*dx + dy*dy;
 }
 
+static void deactivate_projectile(Projectile* projectile)
+{
+	projectile->active = false;
+}
+
+static Projectile* spawn_projectile(SDLContext* context, GameState* game_state) 
+{
+	for(int i = 0; i < PROJECTILE_POOL_SIZE; ++i)
+	{
+		Projectile* projectile = &game_state->projectiles[i];
+		if(!projectile->active)
+		{
+			projectile->active = true;
+			projectile->size = 16;
+			projectile->position.x = game_state->player.position.x + game_state->player.size / 2 - projectile->size / 2;
+			projectile->position.y = game_state->player.position.y - projectile->size; // spawn just above the player
+			projectile->velocity = - game_state->player.velocity * 2;
+			projectile->rect.w = projectile->size;
+			projectile->rect.h = projectile->size;
+			return projectile;
+
+		}
+	}
+	SDL_Log("WARNING: no more projectiles available in the pool\n");
+	return NULL;
+}
+
+static void respawn_asteroid(SDLContext* context, Entity* asteroid)
+{
+	if (asteroid->size <= 0) asteroid->size = 64; // default size if not set
+	asteroid->position.x = asteroid->size + SDL_randf() * (context->window_w - asteroid->size * 2);
+	asteroid->position.y = -asteroid->size; // spawn asteroids off screen 
+	asteroid->velocity   = asteroid->size * 2 + SDL_randf() * asteroid->size * 4; //randomize the velocity again
+	asteroid->rect.x = asteroid->position.x;
+	asteroid->rect.y = asteroid->position.y;
+	asteroid->rect.w = asteroid->size;
+	asteroid->rect.h = asteroid->size;
+}
+
+static void reset_game(SDLContext* context, GameState* game_state)
+{
+	game_state->player_score = 0;
+	// reset player position
+	game_state->player.position.x = context->window_w / 2 - game_state->player.size / 2;
+	game_state->player.position.y = context->window_h - game_state->player.size * 2;
+	game_state->player.rect.x = game_state->player.position.x;
+	game_state->player.rect.y = game_state->player.position.y;
+
+	// reset asteroids
+	for(int i = 0; i < NUM_ASTEROIDS; ++i)
+	{
+		respawn_asteroid(context, &game_state->asteroids[i]);
+	}
+
+	// reset projectiles
+	for(int i = 0; i < PROJECTILE_POOL_SIZE; ++i)
+	{
+		deactivate_projectile(&game_state->projectiles[i]);
+	}
+}
+
+static SDL_Texture* load_texture(SDL_Renderer* renderer, const char* path)
+{
+	int w = 0;
+	int h = 0;
+	int n = 0;
+	unsigned char* pixels = stbi_load(path, &w, &h, &n, 0);
+
+	SDL_assert(pixels);
+
+	// we don't really need this SDL_Surface, but it's the most conveninet way to create out texture
+	// NOTE: out image has the color channels in RGBA order, but SDL_PIXELFORMAT
+	//       behaves the opposite on little endina architectures (ie, most of them)
+	//       we won't worry too much about that, just remember this if your textures looks wrong
+	//       - check that the the color channels are actually what you expect (how many? how big? which order)
+	//       - if everythig looks right, you might just need to flip the channel order, because of SDL
+	SDL_Surface* surface = SDL_CreateSurfaceFrom(w, h, SDL_PIXELFORMAT_ABGR8888, pixels, w * n);
+	SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+	
+	// NOTE: the texture will make a copy of the pixel data, so after creatio we can release both surface and pixel data
+	SDL_DestroySurface(surface);
+	stbi_image_free(pixels);
+
+	return texture;
+}
+
 static void init(SDLContext* context, GameState* game_state)
 {
-	// NOTE: these are a "design" parameter
-	//       it is worth specifying a proper 
+	// Game constants
 	const float entity_size_world = 64;
 	const float entity_size_texture = 128;
 	const float player_speed = entity_size_world * 5;
@@ -76,30 +176,12 @@ static void init(SDLContext* context, GameState* game_state)
 	const float asteroid_speed_range = entity_size_world * 4;
 	const int   asteroid_sprite_coords_x = 0;
 	const int   asteroid_sprite_coords_y = 4;
+
+
 	// load textures
-	{
-		int w = 0;
-		int h = 0;
-		int n = 0;
-		unsigned char* pixels = stbi_load("data/kenney/simpleSpace_tilesheet_2.png", &w, &h, &n, 0);
+	game_state->texture_atlas = load_texture(context->renderer, "data/kenney/simpleSpace_tilesheet_2.png");
 
-		SDL_assert(pixels);
-
-		// we don't really need this SDL_Surface, but it's the most conveninet way to create out texture
-		// NOTE: out image has the color channels in RGBA order, but SDL_PIXELFORMAT
-		//       behaves the opposite on little endina architectures (ie, most of them)
-		//       we won't worry too much about that, just remember this if your textures looks wrong
-		//       - check that the the color channels are actually what you expect (how many? how big? which order)
-		//       - if everythig looks right, you might just need to flip the channel order, because of SDL
-		SDL_Surface* surface = SDL_CreateSurfaceFrom(w, h, SDL_PIXELFORMAT_ABGR8888, pixels, w * n);
-		game_state->texture_atlas = SDL_CreateTextureFromSurface(context->renderer, surface);
-		
-		// NOTE: the texture will make a copy of the pixel data, so after creatio we can release both surface and pixel data
-		SDL_DestroySurface(surface);
-		stbi_image_free(pixels);
-	}
-
-	// character
+	// Initialize player
 	{
 		game_state->player.position.x = context->window_w / 2 - entity_size_world / 2;
 		game_state->player.position.y = context->window_h - entity_size_world * 2;
@@ -119,7 +201,7 @@ static void init(SDLContext* context, GameState* game_state)
 		game_state->player.texture_rect.y = entity_size_texture * player_sprite_coords_y;
 	}
 
-	// asteroids
+	// Initialize asteroids
 	{
 		for(int i = 0; i < NUM_ASTEROIDS; ++i)
 		{
@@ -141,12 +223,32 @@ static void init(SDLContext* context, GameState* game_state)
 			asteroid_curr->texture_rect.y = entity_size_texture * asteroid_sprite_coords_y;
 		}
 	}
+
+	// Initialize projectiles 
+	{
+		
+		for(int i = 0; i < PROJECTILE_POOL_SIZE; ++i)
+		{
+			game_state->projectiles[i].active = false;
+			game_state->projectiles[i].size = 0;
+			game_state->projectiles[i].velocity = 0;
+			game_state->projectiles[i].rect.w = 0;
+			game_state->projectiles[i].rect.h = 0;
+			game_state->projectiles[i].position.x = 0;
+			game_state->projectiles[i].position.y = 0;
+		}
+	}
+
+	// Set initial game state
+	reset_game(context, game_state);
+
 }
 
 static void update(SDLContext* context, GameState* game_state)
 {
 	// player
-	{
+	{	
+		// player movement
 		Entity* entity_player = &game_state->player; 
 		if(context->btn_pressed_up)
 			entity_player->position.y -= context->delta * entity_player->velocity;
@@ -157,8 +259,21 @@ static void update(SDLContext* context, GameState* game_state)
 		if(context->btn_pressed_right)
 			entity_player->position.x += context->delta * entity_player->velocity;
 
+		// player wrapping
+        float cx = entity_player->position.x + entity_player->size / 2;
+        float cy = entity_player->position.y + entity_player->size / 2;
+        if (cx < 0) cx += context->window_w;
+        if (cx > context->window_w) cx -= context->window_w;
+        if (cy < 0) cy += context->window_h;
+        if (cy > context->window_h) cy -= context->window_h;
+
+		entity_player->position.x = cx - entity_player->size / 2;
+		entity_player->position.y = cy - entity_player->size / 2;
+
 		entity_player->rect.x = entity_player->position.x;
 		entity_player->rect.y = entity_player->position.y;
+
+
 		SDL_SetTextureColorMod(entity_player->texture_atlas, 0xFF, 0xFF, 0xFF);
 		SDL_RenderTexture(
 			context->renderer,
@@ -172,7 +287,6 @@ static void update(SDLContext* context, GameState* game_state)
 	{
 		// how close an asteroid must be before categorizing it as "too close" (100 pixels. We square it because we can avoid doing the square root later)
 		const float warning_distance_sq = 100*100;
-
 		// how close an asteroid must be before triggering a collision (64 pixels. We square it because we can avoid doing the square root later)
 		// the number 64 is obtained by summing togheter the "radii" of the sprites
 		const float collision_distance_sq = 64*64;
@@ -187,7 +301,10 @@ static void update(SDLContext* context, GameState* game_state)
 
 			float distance_sq = distance_between_sq(asteroid_curr->position, game_state->player.position);
 			if(distance_sq < collision_distance_sq)
+			{
 				SDL_SetTextureColorMod(asteroid_curr->texture_atlas, 0xFF, 0x00, 0x00);
+				reset_game(context, game_state);
+			}
 			else if(distance_sq < warning_distance_sq)
 				SDL_SetTextureColorMod(asteroid_curr->texture_atlas, 0xCC, 0xCC, 0x00);
 			else
@@ -199,6 +316,57 @@ static void update(SDLContext* context, GameState* game_state)
 				&asteroid_curr->texture_rect,
 				&asteroid_curr->rect
 			);
+
+			// if the asteroid has moved off screen, respawn it
+			if (asteroid_curr->position.y > context->window_h + asteroid_curr->size)
+			{
+				respawn_asteroid(context, asteroid_curr);
+			}
+		}
+	}
+
+	// projectiles
+	{
+		for (int i = 0; i < PROJECTILE_POOL_SIZE; ++i)
+		{
+			Projectile* projectile = &game_state->projectiles[i];
+			if(projectile->active)
+			{
+				projectile->position.y += context->delta * projectile->velocity;
+
+				projectile->rect.x = projectile->position.x;
+				projectile->rect.y = projectile->position.y;
+				projectile->rect.w = projectile->size;
+				projectile->rect.h = projectile->size;
+
+				//Render projectile as white square
+				SDL_SetRenderDrawColor(context->renderer, 0xFF, 0xFF, 0xFF, 0xFF);
+				SDL_RenderFillRect(context->renderer, &projectile->rect);
+
+				// if the projectile has moved off screen, deactivate it
+				if (projectile->position.y + projectile->size < 0 || projectile->position.y > context->window_h)
+				{
+					deactivate_projectile(projectile);
+				}
+
+				// check for collisions with asteroids
+				for (int i = 0; i < NUM_ASTEROIDS; ++i)
+				{
+					Entity* asteroid_curr = &game_state->asteroids[i];
+					SDL_FPoint asteroid_center = { asteroid_curr->position.x + asteroid_curr->size / 2, asteroid_curr->position.y + asteroid_curr->size / 2 };
+					SDL_FPoint projectile_center = { projectile->position.x + projectile->size / 2, projectile->position.y + projectile->size / 2 };
+					float radius_sum = asteroid_curr->size / 2 + projectile->size / 2;
+				
+					if (distance_between_sq(asteroid_center, projectile_center) < radius_sum * radius_sum)
+					{
+						// collision detected
+						game_state->player_score += 1;
+						respawn_asteroid(context, asteroid_curr);
+						deactivate_projectile(projectile);
+						break; // break out of the asteroid loop, since this projectile is now deactivated
+					}
+				}
+			}
 		}
 	}
 }
@@ -256,9 +424,12 @@ int main(void)
 					if(event.key.key == SDLK_A)
 						context.btn_pressed_left = event.key.down;
 					if(event.key.key == SDLK_S)
-						context.btn_pressed_down = event.key.down;
+						context.btn_pressed_down = event.key.down; 
 					if(event.key.key == SDLK_D)
 						context.btn_pressed_right = event.key.down;
+					if(event.key.key == SDLK_SPACE && event.key.down)
+						spawn_projectile(&context, &game_state);
+					break;
 			}
 		}
 
@@ -288,6 +459,7 @@ int main(void)
 #endif
 
 		// render
+		SDL_RenderDebugTextFormat(context.renderer, 10.0f, 40.0f, "score          : %d", game_state.player_score);
 		SDL_RenderPresent(context.renderer);
 
 		walltime_frame_beg = walltime_frame_end;

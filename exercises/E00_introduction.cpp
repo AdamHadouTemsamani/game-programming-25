@@ -111,6 +111,10 @@ int main(void)
 
             players[i].rect.x += dx * player_speed * delta_seconds;
             players[i].rect.y += dy * player_speed * delta_seconds;
+
+			//Make sure players stay within window bounds
+			if (players[i].rect.x < 0) players[i].rect.x = 0;
+			if (players[i].rect.x > window_w - players[i].rect.w) players[i].rect.x = window_w - players[i].rect.w;
         }
 
         // clear screen
