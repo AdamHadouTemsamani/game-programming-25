@@ -27,7 +27,7 @@
 // SDL functions used here (all coming from `itu_common`):
 // - SDL_Log()
 // - SDL_sqrt()
-// - SDL_assert
+// - SDL_assert()
 
 
 bool itu_lib_overlaps_point_circle(vec2f point, vec2f circle_center, float circle_radius);
@@ -74,9 +74,10 @@ inline bool itu_lib_overlaps_segment_circle(vec2f segment_a, vec2f segment_b, ve
 	float t1 = (-b - discriminant) / (2*a);
 	float t2 = (-b + discriminant) / (2*a);
 
-	return (t1 >= 0 && t1 <= 1) || (t2 >= 0 && t2 <= 1);
+	return (t1 >= 0 && t1 <= 1) || (t2 >= 0 && t2 <= 1) || itu_lib_overlaps_point_circle(segment_a, circle_center, circle_radius);
 }
 
+// NOTE: colinear segments are NOT considered overlapping!
 inline bool itu_lib_overlaps_segment_segment(vec2f segment_0_a, vec2f segment_0_b, vec2f segment_1_a, vec2f segment_1_b)
 {
 	// from https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection#Given_two_points_on_each_line_segment
@@ -105,12 +106,24 @@ inline bool itu_lib_overlaps_segment_rect(vec2f segment_a, vec2f segment_b, vec2
 
 	// NOTE: an infine line is much faster to test (just need to check if all points of the rect are on the same side of the line)
 	//       segments are tricky tho. Should probably add infinite lines and planes in the future
-	return itu_lib_overlaps_segment_segment(segment_a, segment_b, a, b) ||
-		   itu_lib_overlaps_segment_segment(segment_a, segment_b, b, c)	||
-		   itu_lib_overlaps_segment_segment(segment_a, segment_b, c, d)	||
-		   itu_lib_overlaps_segment_segment(segment_a, segment_b, d, a)	||
-		   itu_lib_overlaps_point_rect(segment_a, a, b) ||
-		   itu_lib_overlaps_point_rect(segment_b, a, b);
+
+	// test needed:
+	// 1. base case: is the segment intersecting any of the rect's edges?
+	// 2. segment fully contained in rect: both segment's endpoints are inside the rect
+	//    (we need to test both, otherwise we have a deadzone when the entire segment is inside but the tested point is on the rect's edge)
+	// NOTE: tests are sorted from cheaper to most expensive, since we won't need to do any more tests after we get a positive
+	//       (see https://en.cppreference.com/w/cpp/language/operator_logical.html, "short-circuit evaluation)
+	return
+		
+		// extra test: if the segment is fully contained there will be no segment<>edge overlap,
+		//             but both segment ends will be inside the rect (we can test either one
+		itu_lib_overlaps_point_rect(segment_a, rect_min, rect_max) ||
+		itu_lib_overlaps_point_rect(segment_b, rect_min, rect_max) ||
+		// base tests: is the segment overlapping any of the rectangle's sides?
+		itu_lib_overlaps_segment_segment(segment_a, segment_b, a, b) ||
+		itu_lib_overlaps_segment_segment(segment_a, segment_b, b, c) ||
+		itu_lib_overlaps_segment_segment(segment_a, segment_b, c, d) ||
+		itu_lib_overlaps_segment_segment(segment_a, segment_b, d, a);
 }
 
 inline bool itu_lib_overlaps_circle_circle(vec2f circle_center_0, float circle_radius_0, vec2f circle_center_1, float circle_radius_1)
@@ -126,18 +139,27 @@ inline bool itu_lib_overlaps_circle_circle(vec2f circle_center_0, float circle_r
 
 inline bool itu_lib_overlaps_circle_rect(vec2f circle_center, float circle_radius, vec2f rect_min, vec2f rect_max)
 {
-	int num_collisions = 0;
-
 	vec2f a = vec2f{ rect_min.x, rect_min.y };	// d ---- c
 	vec2f b = vec2f{ rect_max.x, rect_min.y };	// |      |
 	vec2f c = vec2f{ rect_max.x, rect_max.y };	// |      |
 	vec2f d = vec2f{ rect_min.x, rect_max.y };	// a ---- b
 
-	return itu_lib_overlaps_point_circle(a, circle_center, circle_radius) ||
-		   itu_lib_overlaps_point_circle(b, circle_center, circle_radius) ||
-		   itu_lib_overlaps_point_circle(c, circle_center, circle_radius) ||
-		   itu_lib_overlaps_point_circle(d, circle_center, circle_radius) ||
-		   itu_lib_overlaps_point_rect(circle_center, rect_min, rect_max);
+	// tests needed:
+	// 1. base case: is any of the rect's edges overlapping the circle?
+	// 2. circle fully contained in rect: we can just test the circle center against the rect itself
+	// 3. rect fully contained in circle: all vertices of the rect will be inside the rect (we can test any one of them)
+	// NOTE: tests are sorted from cheaper to most expensive, since we won't need to do any more tests after we get a positive
+	//       (see https://en.cppreference.com/w/cpp/language/operator_logical.html, "short-circuit evaluation)
+	return
+		// 3. rect fully contained in circle
+		itu_lib_overlaps_point_circle(a, circle_center, circle_radius) ||
+		// 2. circle fully contained in rec
+		itu_lib_overlaps_point_rect(circle_center, rect_min, rect_max) ||
+		// base tests: is any of the rect's edges overlapping the circle?
+		itu_lib_overlaps_segment_circle(a, b, circle_center, circle_radius) ||
+		itu_lib_overlaps_segment_circle(b, c, circle_center, circle_radius) ||
+		itu_lib_overlaps_segment_circle(c, d, circle_center, circle_radius) ||
+		itu_lib_overlaps_segment_circle(d, a, circle_center, circle_radius);
 }
 
 inline bool itu_lib_overlaps_rect_rect(vec2f rect_min_0, vec2f rect_max_0, vec2f rect_min_1, vec2f rect_max_1)
@@ -382,4 +404,5 @@ bool itu_lib_overlaps_polygon_polygon(vec2f* polygon_0_vertices, int poligon_0_v
 	}
 	return ret;
 }
+
 #endif // ITU_LIB_COLLISIONS_IMPLEMENTATION

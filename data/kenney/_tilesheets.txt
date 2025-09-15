@@ -1,2 +1,4 @@
 name						tile size		rows	cols	total tiles
 simpleSpace_tilesheet_2		128px x 128px	6		8		48
+tiny_dungeon_packed			16px x 16px		11		12		132
+tiny_town_packed			16px x 16px		11		12		132

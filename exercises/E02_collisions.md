@@ -22,7 +22,7 @@ Starting from the live-coding example, let's crank up the number of entities and
 
 Some optimizations to try:
 - static colliders
-	- add the ability to mark entities as "static". We could either store them in a different array or mark them with a boolean, we'll go with the boolean (less performant but requires less scaffolding. The important thing is to break the nasty quadratic loop we have.
+	- add the ability to mark entities as "static". We could either store them in a different array or mark them with a boolean, we'll go with the boolean (less performant but requires less scaffolding. The important thing is to break the nasty quadratic loop we have.)
 	- how does this optimization affect separation? Would that make sense for a game? What if you prevent the static entity from moving?
 	- did this fix our framerate problem? How many entities with static collision can you spawn before you exhaust your 16.6ms/f buget? How many to hit the previous 200/300 baseline?
 - world partition
