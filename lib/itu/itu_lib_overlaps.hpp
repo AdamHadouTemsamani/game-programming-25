@@ -45,8 +45,6 @@ bool itu_lib_overlaps_circle_polygon(vec2f circle_center, float circle_radius, v
 bool itu_lib_overlaps_rect_polygon(vec2f rect_min, vec2f rect_max, vec2f* polygon_vertices, int poligon_vertices_count);
 bool itu_lib_overlaps_polygon_polygon(vec2f* polygon_0_vertices, int poligon_0_vertices_count, vec2f* polygon_1_vertices, int poligon_1_vertices_count, vec2f* out_simplex, int* out_simplex_count);
 
-#endif
-
 #if defined ITU_LIB_COLLISIONS_IMPLEMENTATION || defined ITU_UNITY_BUILD
 
 inline bool itu_lib_overlaps_point_circle(vec2f point, vec2f circle_center, float circle_radius)
@@ -406,3 +404,5 @@ bool itu_lib_overlaps_polygon_polygon(vec2f* polygon_0_vertices, int poligon_0_v
 }
 
 #endif // ITU_LIB_COLLISIONS_IMPLEMENTATION
+
+#endif // ITU_LIB_COLLISIONS_HPP

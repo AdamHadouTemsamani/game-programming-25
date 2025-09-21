@@ -18,10 +18,9 @@
 
 void itu_lib_render_draw_point(SDL_Renderer* renderer, vec2f pos, float half_size, color color);
 void itu_lib_render_draw_rect(SDL_Renderer* renderer, vec2f min, vec2f max, color color);
+void itu_lib_render_draw_rect_fill(SDL_Renderer* renderer, vec2f min, vec2f max, color color);
 void itu_lib_render_draw_circle(SDL_Renderer* renderer, vec2f center, float radius, int vertex_count, color);
 void itu_lib_render_draw_polygon(SDL_Renderer* renderer, vec2f position, const vec2f* vertices, int vertexCount, color color);
-
-#endif // ITU_LIB_RENDER_HPP
 
 #if defined ITU_LIB_RENDER_IMPLEMENTATION || defined ITU_UNITY_BUILD
 
@@ -43,6 +42,18 @@ void itu_lib_render_draw_rect(SDL_Renderer* renderer, vec2f min, vec2f extents, 
 
 	SDL_SetRenderDrawColorFloat(renderer, color.r, color.g, color.b, color.a);
 	SDL_RenderRect(renderer, &rect);
+}
+
+void itu_lib_render_draw_rect_fill(SDL_Renderer* renderer, vec2f min, vec2f extents, color color)
+{
+	SDL_FRect rect;
+	rect.x = min.x;
+	rect.y = min.y;
+	rect.w = extents.x;
+	rect.h = extents.y;
+
+	SDL_SetRenderDrawColorFloat(renderer, color.r, color.g, color.b, color.a);
+	SDL_RenderFillRect(renderer, &rect);
 }
 
 // NOTE: vertex count must be smaller than `MAX_CIRCLE_VERTICES` (defaults to 16, but you can change it if you need to)
@@ -109,3 +120,5 @@ void itu_lib_render_draw_polygon(SDL_Renderer* renderer, vec2f position, const v
 }
 
 # endif //ITU_LIB_RENDER_IMPLEMENTATION
+
+#endif // ITU_LIB_RENDER_HPP

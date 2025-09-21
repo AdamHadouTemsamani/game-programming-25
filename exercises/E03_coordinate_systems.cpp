@@ -1,6 +1,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define ITU_UNITY_BUILD
 
+#define TEXTURE_PIXELS_PER_UNIT 128
+#define CAMERA_PIXELS_PER_UNIT  128
+
 #include <SDL3/SDL.h>
 #include <itu_lib_engine.hpp>
 #include <itu_lib_render.hpp>
@@ -13,8 +16,6 @@
 #define WINDOW_H         600
 
 #define ENTITY_COUNT 4096
-
-#define PIXELS_PER_UNIT 128
 
 bool DEBUG_render_textures = true;
 bool DEBUG_render_outlines = true;
@@ -86,8 +87,12 @@ static void game_reset(SDLContext* context, GameState* state)
 	{
 		Entity* bg = entity_create(state);
 		SDL_FRect sprite_rect = SDL_FRect{ 0, 0, 1024, 1024};
-		itu_lib_sprite_init(&bg->sprite, state->bg, sprite_rect);
-		bg->transform.scale = VEC2F_ONE * 8;
+		itu_lib_sprite_init(
+			&bg->sprite,
+			state->bg,
+			itu_lib_sprite_get_rect(0, 0, 1024, 1024)
+		);
+		bg->transform.scale = VEC2F_ONE;
 	}
 
 	{
@@ -124,7 +129,7 @@ static void game_update(SDLContext* context, GameState* state)
 		entity->transform.position = entity->transform.position + mov * (player_speed * context->delta);
 
 		// camera follows player
-		context->camera.position = entity->transform.position;
+		context->camera_active->world_position = entity->transform.position;
 	}
 }
 
@@ -171,10 +176,14 @@ int main(void)
 		SDL_SetRenderScale(context.renderer, context.zoom, context.zoom);
 	}
 
-	context.camera.size.x = context.window_w / PIXELS_PER_UNIT;
-	context.camera.size.y = context.window_h / PIXELS_PER_UNIT;
-	context.camera.zoom = 1;
-	context.camera.pixels_per_unit = PIXELS_PER_UNIT;
+	context.camera_default.normalized_screen_size.x = 1.0f;
+	context.camera_default.normalized_screen_size.y = 1.0f;
+	context.camera_default.normalized_screen_offset.x = 0.0f;
+	context.camera_default.normalized_screen_offset.y = 0.0f;
+	context.camera_default.zoom = 1;
+	context.camera_default.pixels_per_unit = CAMERA_PIXELS_PER_UNIT;
+
+	camera_set_active(&context, &context.camera_default);
 
 	game_init(&context, &state);
 	game_reset(&context, &state);
@@ -192,6 +201,7 @@ int main(void)
 	{
 		// input
 		SDL_Event event;
+		sdl_input_clear(&context);
 		while(SDL_PollEvent(&event))
 		{
 			switch(event.type)
@@ -199,7 +209,7 @@ int main(void)
 				case SDL_EVENT_QUIT:
 					quit = true;
 					break;
-					
+
 				case SDL_EVENT_KEY_DOWN:
 				case SDL_EVENT_KEY_UP:
 					switch(event.key.key)
