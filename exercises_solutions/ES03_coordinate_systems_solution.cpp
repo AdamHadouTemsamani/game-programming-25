@@ -328,7 +328,7 @@ int main(void)
 	// increase the zoom to make debug text more legible
 	// (ie, on the class projector, we will usually use 2)
 	{
-		context.zoom = 1;
+		context.zoom = 2;
 		context.window_w /= context.zoom;
 		context.window_h /= context.zoom;
 		SDL_SetRenderScale(context.renderer, context.zoom, context.zoom);
@@ -371,8 +371,8 @@ int main(void)
 				// listen for mouse motion and store the absolute position in screen space
 				case SDL_EVENT_MOUSE_MOTION:
 				{
-					context.mouse_pos.x = event.motion.x;
-					context.mouse_pos.y = event.motion.y;
+					context.mouse_pos.x = event.motion.x / context.zoom;
+					context.mouse_pos.y = event.motion.y / context.zoom;
 					break;
 				}
 				// listen for mouse wheel and store the relative position in screen space

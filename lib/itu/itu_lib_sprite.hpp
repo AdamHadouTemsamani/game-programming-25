@@ -71,10 +71,20 @@ void itu_lib_sprite_render(SDLContext* context, Sprite* sprite, Transform* trans
 {
 	SDL_FRect rect_src = sprite->rect;
 	SDL_FRect rect_dst = itu_lib_sprite_get_screen_rect(context, sprite, transform);
+	SDL_FPoint pivot_dst;
+	pivot_dst.x = sprite->pivot.x * rect_dst.w;
+	pivot_dst.y = sprite->pivot.y * rect_dst.h;
 
 	sdl_set_texture_tint(sprite->texture, sprite->tint);
-
-	SDL_RenderTexture(context->renderer, sprite->texture, &rect_src, &rect_dst);
+	SDL_RenderTextureRotated(
+		context->renderer,
+		sprite->texture,
+		&rect_src,
+		&rect_dst,
+		(-transform->rotation) * RAD_2_DEG,
+		&pivot_dst,
+		SDL_FLIP_NONE
+	);
 }
 
 void itu_lib_sprite_render_debug(SDLContext* context, Sprite* sprite, Transform* transform)

@@ -149,6 +149,17 @@ SDL_FRect rect_global_to_screen(SDLContext* context, SDL_FRect rect)
 	return ret;
 }
 
+
+float size_global_to_screen(SDLContext* context, float size)
+{
+	SDL_assert(context);
+	Camera* camera = context->camera_active;
+
+	SDL_assert(camera);
+
+	return size * camera->pixels_per_unit * camera->zoom;
+}
+
 // converts the given point to the viewport of the given camera
 vec2f point_global_to_screen(SDLContext* context,vec2f p)
 {
@@ -255,6 +266,16 @@ void sdl_set_texture_tint(SDL_Texture* texture, color c)
 	SDL_SetTextureAlphaModFloat(texture, c.a);
 }
 
+void sdl_render_duagnostics(SDLContext* context, float elapsed_work, float elapsed_frame)
+{
+	SDL_SetRenderDrawColor(context->renderer, 0x0, 0x00, 0x00, 0xCC);
+	SDL_FRect rect = SDL_FRect{ 5, 5, 145, 25 };
+	SDL_RenderFillRect(context->renderer, &rect);
+		 
+	SDL_SetRenderDrawColor(context->renderer, 0xFF, 0xFF, 0xFF, 0xFF);
+	SDL_RenderDebugTextFormat(context->renderer, 10, 10, "work: %6.3f ms/f", (float)elapsed_work  / (float)MILLIS(1));
+	SDL_RenderDebugTextFormat(context->renderer, 10, 20, "tot : %6.3f ms/f", (float)elapsed_frame / (float)MILLIS(1));
+}
 #endif // ITU_LIB_ENGINE_IMPLEMENTATION
 
 #endif // ITU_LIB_ENGINE_HPP
