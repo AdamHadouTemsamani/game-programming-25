@@ -22,7 +22,8 @@ This game focuses on ballistic trajectories and physic material properties.
 - have the player control angle, stenght and firing of a "cannon". On fire, spawn a projectile and sets its trajectory accordingly (either setting its velocity directly, or applying an appropriate impulse)
 - create a firing loop where the player has to wait for the projectile to be despawned (either because it it something, it exited the play area, or it came to rest)
 - (optional) add whatever scoring logic of your choice, moving elements, special projectiles, limited amount of tries...
-![angry_birds_reference](../media/e04_1.jpg)
+
+![angry_birds_reference](../media/e04_1.jpeg)
 
 ### 4.1.2 Pools
 This game focuses on dynamic entities and input interactions.
@@ -37,6 +38,7 @@ This game focuses on dynamic entities and input interactions.
 	- points
 	- two types of balls (white ball can be hit directly by the player but scores no points, other balls cannot be hit directly but count towards scoring)
 	- two players
+
 ![pool_table_referece](../media/e04_2.jpg)
 
 
@@ -47,7 +49,8 @@ This game focuses on kinematic movements and game feel.
 - add dashing (it's important to not teleport the player, but just set it speed to a high value for a few frames.)
 - add enviromental hazards which reset the game when touched/overlapped
 - (optional) add whatever additional feature/ability from your favourite platformer/metroidvania/whatever game might be relevant here
-![celeste_referece](../media/e04_2.jpg)
+
+![celeste_referece](../media/e04_3.png)
 
 ## 4.2 Advanced physics integration (optional)
 The current physics integration is way too simple for a commercial game. We would like to address at least two things:

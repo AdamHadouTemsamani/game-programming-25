@@ -1,9 +1,11 @@
 #ifndef ITU_COMMON_HPP
 #define ITU_COMMON_HPP
 
+#ifndef ITU_UNITY_BUILD
 #include <SDL3/SDL_log.h>    // SDL_Log()
 #include <SDL3/SDL_error.h>  // SDL_Error()
 #include <SDL3/SDL_stdinc.h> // SDL_assert(), all math functions and macros
+#endif
 
 // *******************************************************************
 // common macros
@@ -39,6 +41,9 @@
 // NOTE: `x` must be a value variable (not expression, not return value, just a variable)
 #define value_cast(type, x) *(type*)(&(x))
 
+// offset a pointer by an amount of bytes
+#define pointer_offset(type, pointer, amount) ((type*)((unsigned char*)(pointer) + (amount)))
+
 // trigonometric macros
 #define PI_HALF 1.570796f // radians equivalent of 45 degrees
 #define PI      3.141592f // radians equivalent of 180 degrees
@@ -51,6 +56,27 @@
 //
 // NOTE: this may be too big for certain game designs. Change this if you need
 #define FLOAT_EPSILON 0.001f
+
+
+
+// *******************************************************************
+// data structures
+// NOTE: this is the C++ version, so operator overloading party
+// *******************************************************************
+
+// wrapper for a pointer of type `T` (reminder that we intend to manipulate data referenced by this pointer using a stbds array)
+#define stbds_arr(T) T*
+
+// wrapper for a pointer of type `struct { TK* key, TV* value }` (reminder that we intend to manipulate data referenced by this pointer using a stbds hashmap)
+// NOTE: `f the key is a string, use `stbds_sm` instead
+#define stbds_hm(TK, TV) struct { TK key; TV value; }*
+
+// wrapper for a pointer of type `struct { TK* key, TV* value }` (reminder that we intend to manipulate data referenced by this pointer using a stbds hashmap)
+// NOTE: this version is for char* key values
+#define stbds_sm(TK, TV) struct { TK key; TV value; }*
+
+
+
 
 // *******************************************************************
 // vector math
@@ -207,15 +233,6 @@ inline vec2f clamp(vec2f a, float len)
 		ret = ret * shirk_factor;
 	}
 	return ret;
-
-	// vec2f ret = a;
-	// float len_curr = length(a);
-	// if(len < len_curr)
-	// {
-	// 	float shirk_factor = len / len_curr;
-	// 	ret = ret * shirk_factor;
-	// }
-	// return ret;
 }
 
 inline vec2f rotate(vec2f a, float angle)

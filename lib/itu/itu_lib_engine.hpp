@@ -6,9 +6,11 @@
 #ifndef ITU_LIB_ENGINE_HPP
 #define ITU_LIB_ENGINE_HPP
 
+#ifndef ITU_UNITY_BUILD
 #include <SDL3/SDL.h>
 #include <stb_image.h>
 #include <itu_common.hpp>
+#endif
 
 enum BtnType
 {
@@ -96,6 +98,8 @@ void sdl_input_key_process(SDLContext* context, BtnType button_id, SDL_Event* ev
 SDL_Texture* texture_create(SDLContext* context, const char* path, SDL_ScaleMode mode);
 void sdl_set_render_draw_color(SDLContext* context, color c);
 void sdl_set_texture_tint(SDL_Texture* texture, color c);
+
+#endif // ITU_LIB_ENGINE_HPP
 
 #if (defined ITU_LIB_ENGINE_IMPLEMENTATION) || (defined ITU_UNITY_BUILD)
 
@@ -229,6 +233,14 @@ void sdl_input_key_process(SDLContext* context, BtnType button_id, SDL_Event* ev
 	context->btn_isjustpressed[button_id] = event->key.down && !event->key.repeat;
 }
 
+// Auxiliary function to process low-frequency inputs.
+// May drop inputs that are firing higher than the current framerate
+void sdl_input_mouse_button_process(SDLContext* context, BtnType button_id, SDL_Event* event)
+{
+	context->btn_isjustpressed[button_id] = event->button.down && !context->btn_isjustpressed[button_id];
+	context->btn_isdown[button_id] = event->button.down;
+}
+
 SDL_Texture* texture_create(SDLContext* context, const char* path, SDL_ScaleMode mode)
 {
 	// texture could accept which pixel format it has as parameter, but this for now seems good enough
@@ -266,7 +278,7 @@ void sdl_set_texture_tint(SDL_Texture* texture, color c)
 	SDL_SetTextureAlphaModFloat(texture, c.a);
 }
 
-void sdl_render_duagnostics(SDLContext* context, float elapsed_work, float elapsed_frame)
+void sdl_render_diagnostics(SDLContext* context, float elapsed_work, float elapsed_frame)
 {
 	SDL_SetRenderDrawColor(context->renderer, 0x0, 0x00, 0x00, 0xCC);
 	SDL_FRect rect = SDL_FRect{ 5, 5, 145, 25 };
@@ -276,6 +288,18 @@ void sdl_render_duagnostics(SDLContext* context, float elapsed_work, float elaps
 	SDL_RenderDebugTextFormat(context->renderer, 10, 10, "work: %6.3f ms/f", (float)elapsed_work  / (float)MILLIS(1));
 	SDL_RenderDebugTextFormat(context->renderer, 10, 20, "tot : %6.3f ms/f", (float)elapsed_frame / (float)MILLIS(1));
 }
-#endif // ITU_LIB_ENGINE_IMPLEMENTATION
 
-#endif // ITU_LIB_ENGINE_HPP
+// busy waits to introduce artificial delay
+void engine_artificial_delay(float delay_ms, float delay_spread_ms)
+{
+	SDL_Time walltime_start;
+	SDL_Time walltime_busywait;
+	SDL_Time target_wait = (delay_ms + (SDL_randf() - 0.5f) * delay_spread_ms) * 1000000;
+
+	SDL_GetCurrentTime(&walltime_start);
+	walltime_busywait = walltime_start;
+	while(walltime_busywait - walltime_start < target_wait)
+		SDL_GetCurrentTime(&walltime_busywait);
+}
+					
+#endif // ITU_LIB_ENGINE_IMPLEMENTATION

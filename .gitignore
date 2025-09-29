@@ -1,7 +1,9 @@
-out
+out*
 build
 .vs
 .vscode
 .idea
 
 CMakeSettings.json
+imgui.ini
+build.sh

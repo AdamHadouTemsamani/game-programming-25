@@ -9,6 +9,12 @@ foreach(file_src ${file_src_list})
 	target_include_directories(${targetname} PRIVATE ${CMAKE_SOURCE_DIR}/lib/imgui)
 
 	target_link_libraries(${targetname} PRIVATE SDL3::SDL3)
+	target_link_libraries(${targetname} PRIVATE SDL3_mixer::SDL3_mixer)
 	target_link_libraries(${targetname} PRIVATE box2d::box2d)
+<<<<<<< HEAD
 	# target_link_libraries(${targetname} PRIVATE imgui)
 endforeach()
+=======
+	target_link_libraries(${targetname} PRIVATE imgui)
+endforeach()
+>>>>>>> upstream/main

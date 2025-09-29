@@ -1,10 +1,9 @@
 #define STB_IMAGE_IMPLEMENTATION
-
-#define ITU_UNITY_BUILD
-
+#define ITU_LIB_ENGINE_IMPLEMENTATION
+#define ITU_LIB_RENDER_IMPLEMENTATION
+#define ITU_LIB_OVERLAPS_IMPLEMENTATION
 
 #include <SDL3/SDL.h>
-#include <stb_image.h>
 
 #include <itu_common.hpp>
 #include <itu_lib_render.hpp>
@@ -49,7 +48,7 @@ struct Entity;
 struct EntityCollisionInfo;
 struct WorldPartitionCell;
 
-struct SDLContext
+struct MySDLContext
 {
 	SDL_Renderer* renderer;
 	float zoom;     // render zoom
@@ -89,7 +88,7 @@ struct GameState
 	SDL_Texture* atlas;
 };
 
-static SDL_Texture* texture_create(SDLContext* context, const char* path)
+static SDL_Texture* texture_create(MySDLContext* context, const char* path)
 {
 	int w=0, h=0, n=0;
 	unsigned char* pixels = stbi_load(path, &w, &h, &n, 0);
@@ -118,7 +117,7 @@ struct Sprite
 // quick sprite rendering function that takes care of most of the functionalities
 // NOTE: this function is still temporary since ATM we can't really deal with game worlds bigger than the rendering window
 //       we will address it in lecture 03, and then we will just create a final sprite system and be done with it
-static void sprite_render(SDLContext* context, vec2f position, vec2f size, Sprite* sprite)
+static void sprite_render(MySDLContext* context, vec2f position, vec2f size, Sprite* sprite)
 {
 	SDL_FRect dst_rect;
 	dst_rect.w = size.x;
@@ -199,7 +198,7 @@ struct WorldPartitionCell
 
 // fancy debug visualization for an incredibly simple world partition
 // the code is a mess tho, we will try to make it better when we talk about UIs
-static void world_partition_debug_cells(SDLContext* context, GameState* state)
+static void world_partition_debug_cells(MySDLContext* context, GameState* state)
 {
 	// render cell boundaries
 	SDL_SetRenderDrawColor(context->renderer, 0xFF, 0xFF, 0xFF, 0xFF);
@@ -431,7 +430,7 @@ static void collision_separate(GameState* state)
 // game
 // ********************************************************************************************************************
 
-static void game_init(SDLContext* context, GameState* state)
+static void game_init(MySDLContext* context, GameState* state)
 {
 	state->entities = (Entity*)SDL_calloc(ENTITY_COUNT, sizeof(Entity));
 	SDL_assert(state->entities);
@@ -462,7 +461,7 @@ static void game_init(SDLContext* context, GameState* state)
 
 }
 
-static void game_reset(SDLContext* context, GameState* state)
+static void game_reset(MySDLContext* context, GameState* state)
 {
 	// entities
 	{
@@ -540,7 +539,7 @@ static void game_reset(SDLContext* context, GameState* state)
 	}
 }
 
-static void game_update(SDLContext* context, GameState* state)
+static void game_update(MySDLContext* context, GameState* state)
 {
 	vec2f mov = { 0 };
 	if(context->btn_isdown_up)
@@ -582,7 +581,7 @@ static void game_update(SDLContext* context, GameState* state)
 		world_partition_assign_all_entitites(state);
 }
 
-static void game_render(SDLContext* context, GameState* state)
+static void game_render(MySDLContext* context, GameState* state)
 {
 	// render
 	for(int i = 0; i < state->entities_alive_count; ++i)
@@ -616,7 +615,7 @@ int main(void)
 	int a = sizeof(int*);
 	bool quit = false;
 	SDL_Window* window;
-	SDLContext context = { 0 };
+	MySDLContext context = { 0 };
 	GameState  state   = { 0 };
 
 	context.window_w = WINDOW_W;

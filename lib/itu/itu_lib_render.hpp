@@ -11,25 +11,31 @@
 #ifndef ITU_LIB_RENDER_HPP
 #define ITU_LIB_RENDER_HPP
 
+#ifndef ITU_UNITY_BUILD
 #include <SDL3/SDL_render.h>
 #include <itu_common.hpp>
 #include <itu_lib_engine.hpp>
+#endif
 
 #define MAX_CIRCLE_VERTICES 16
 
 void itu_lib_render_draw_point(SDL_Renderer* renderer, vec2f pos, float half_size, color color);
+void itu_lib_render_draw_line(SDL_Renderer* renderer, vec2f p0, vec2f p1, color color);
 void itu_lib_render_draw_rect(SDL_Renderer* renderer, vec2f min, vec2f max, color color);
 void itu_lib_render_draw_rect_fill(SDL_Renderer* renderer, vec2f min, vec2f max, color color);
 void itu_lib_render_draw_circle(SDL_Renderer* renderer, vec2f center, float radius, int vertex_count, color);
 void itu_lib_render_draw_polygon(SDL_Renderer* renderer, vec2f position, const vec2f* vertices, int vertexCount, color color);
 
 void itu_lib_render_draw_world_point(SDLContext* context, vec2f pos, float half_size, color color);
+void itu_lib_render_draw_world_line(SDLContext* context, vec2f p0, vec2f p1, color color);
 void itu_lib_render_draw_world_rect(SDLContext* context, vec2f min, vec2f max, color color);
 void itu_lib_render_draw_world_rect_fill(SDLContext* context, vec2f min, vec2f max, color color);
 void itu_lib_render_draw_world_circle(SDLContext* context, vec2f center, float radius, int vertex_count, color);
 void itu_lib_render_draw_world_polygon(SDLContext* context, vec2f position, const vec2f* vertices, int vertexCount, color color);
 
 void itu_lib_render_draw_world_grid(SDLContext* context);
+
+#endif // ITU_LIB_RENDER_HPP
 
 #if defined ITU_LIB_RENDER_IMPLEMENTATION || defined ITU_UNITY_BUILD
 
@@ -39,6 +45,12 @@ void itu_lib_render_draw_point(SDL_Renderer* renderer, vec2f pos, float half_siz
 	SDL_SetRenderDrawColorFloat(renderer, color.r, color.g, color.b,color.a);
 	SDL_RenderLine(renderer, pos.x - half_size, pos.y, pos.x + half_size, pos.y);
 	SDL_RenderLine(renderer, pos.x, pos.y - half_size, pos.x, pos.y + half_size);
+}
+
+void itu_lib_render_draw_line(SDL_Renderer* renderer, vec2f p0, vec2f p1, color color)
+{
+	SDL_SetRenderDrawColorFloat(renderer, color.r, color.g, color.b,color.a);
+	SDL_RenderLine(renderer, p0.x, p0.y, p1.x, p1.y);
 }
 
 void itu_lib_render_draw_rect(SDL_Renderer* renderer, vec2f min, vec2f extents, color color)
@@ -136,6 +148,11 @@ void itu_lib_render_draw_world_point(SDLContext* context, vec2f pos, float half_
 	itu_lib_render_draw_point(context->renderer, point_global_to_screen(context, pos), half_size, color);
 }
 
+void itu_lib_render_draw_world_line(SDLContext* context, vec2f p0, vec2f p1, color color)
+{
+	itu_lib_render_draw_line(context->renderer, point_global_to_screen(context, p0), point_global_to_screen(context, p1), color);
+}
+
 void itu_lib_render_draw_world_rect(SDLContext* context, vec2f min, vec2f max, color color);
 void itu_lib_render_draw_world_rect_fill(SDLContext* context, vec2f min, vec2f max, color color);
 void itu_lib_render_draw_world_circle(SDLContext* context, vec2f center, float radius, int vertex_count, color c)
@@ -201,5 +218,3 @@ void itu_lib_render_draw_world_grid(SDLContext* context)
 		SDL_RenderLine(context->renderer, camera_window_min.x, i, camera_window_max.x, i);
 }
 # endif //ITU_LIB_RENDER_IMPLEMENTATION
-
-#endif // ITU_LIB_RENDER_HPP

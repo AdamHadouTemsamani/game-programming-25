@@ -1,17 +1,9 @@
-#define STB_IMAGE_IMPLEMENTATION
-#define ITU_UNITY_BUILD
-
-#define ENABLE_DIAGNOSTICS
-
 #define TEXTURE_PIXELS_PER_UNIT 16    // how many pixels of textures will be mapped to a single world unit
 #define CAMERA_PIXELS_PER_UNIT  16*2  // how many pixels of windows will be used to render a single world unit
 
-#include <SDL3/SDL.h>
-#include <itu_lib_engine.hpp>
-#include <itu_lib_render.hpp>
-#include <itu_lib_sprite.hpp>
-#include <itu_lib_imgui.hpp>
-#include <itu_lib_box2d.hpp>
+#include <itu_unity_include.hpp>
+
+#define ENABLE_DIAGNOSTICS
 
 #define TARGET_FRAMERATE_NS    SECONDS(1) / 60
 // NOTE: we are compouding precision errors here (convert seconds into nsecs, back to seconds),
@@ -398,7 +390,7 @@ static void game_update(SDLContext* context, GameState* state)
 		b2Vec2 physics_vel = b2Body_GetLinearVelocity(entity->body_id);
 		b2Vec2 physics_pos = b2Body_GetPosition(entity->body_id);
 		b2Rot  physics_rot = b2Body_GetRotation(entity->body_id);
-		entity->velocity = value_cast(vec2f, physics_vel);
+		entity->velocity = value_cast(vec2f, physics_vel); 
 		entity->transform.position = value_cast(vec2f, physics_pos);
 		entity->transform.rotation = b2Rot_GetAngle(physics_rot);
 	}
@@ -408,8 +400,18 @@ static void game_update(SDLContext* context, GameState* state)
 		Entity* entity = state->player;
 		PlayerData* data = &state->player_data;
 
+		
+		 // NOTE: quick hack because I forgot a VLA in the code again. Exercise solution will do this nicely
+		 static int contad_data_size = 16;
+		 static b2ContactData* contact_data = (b2ContactData*)SDL_calloc(16, sizeof(b2ContactData));
+
 		 int contacts = b2Body_GetContactCapacity(entity->body_id);
-		 b2ContactData contact_data[contacts];
+
+		 if(contacts > contad_data_size)
+		 {
+			 contad_data_size = contacts;
+			 contact_data = (b2ContactData*)SDL_realloc(contact_data, contad_data_size * sizeof(b2ContactData));
+		 }
 		 int actual_contacts = b2Body_GetContactData(state->player->body_id, contact_data, contacts);
 		 
 		 data->grounded = false;
@@ -427,7 +429,11 @@ static void game_update(SDLContext* context, GameState* state)
 	for(int i = 0; i < worl_sensor_events.beginCount; ++i)
 	{
 		b2SensorBeginTouchEvent* sensor_event = &worl_sensor_events.beginEvents[i];
+<<<<<<< HEAD
 		b2Vec2 direction = b2Vec2{ 0, 1 };
+=======
+		b2Vec2 direction = b2Vec2 { 0, 1 };
+>>>>>>> upstream/main
 
 		float vel_sq = length_sq(state->player->velocity);
 		if(SDL_fabsf(vel_sq) < FLOAT_EPSILON)
@@ -478,11 +484,6 @@ static void game_render(SDLContext* context, GameState* state)
 	SDL_RenderRect(context->renderer, NULL);
 }
 
-// Our state
-bool show_demo_window = true;
-bool show_another_window = false;
-ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
 int main(void)
 {
 	bool quit = false;
@@ -493,7 +494,7 @@ int main(void)
 	context.window_w = WINDOW_W;
 	context.window_h = WINDOW_H;
 
-	SDL_CreateWindowAndRenderer("ES03 - Coordinate Systems", WINDOW_W, WINDOW_H, 0, &window, &context.renderer);
+	SDL_CreateWindowAndRenderer("E04 - Physics", WINDOW_W, WINDOW_H, 0, &window, &context.renderer);
 	SDL_SetRenderDrawBlendMode(context.renderer, SDL_BLENDMODE_BLEND);
 	
 	// increase the zoom to make debug text more legible
@@ -524,8 +525,8 @@ int main(void)
 	SDL_Time walltime_frame_beg;
 	SDL_Time walltime_frame_end;
 	SDL_Time walltime_work_end;
-	SDL_Time elapsed_work;
-	SDL_Time elapsed_frame;
+	SDL_Time elapsed_work = 0;
+	SDL_Time elapsed_frame = 0;
 
 	SDL_GetCurrentTime(&walltime_frame_beg);
 	walltime_frame_end = walltime_frame_beg;

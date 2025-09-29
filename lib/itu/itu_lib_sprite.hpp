@@ -1,7 +1,9 @@
 #ifndef ITU_LIB_SPRITE_HPP
 #define ITU_LIB_SPRITE_HPP
 
+#ifndef ITU_UNITY_BUILD
 #include <itu_lib_engine.hpp>
+#endif
 
 struct Sprite
 {
@@ -9,6 +11,7 @@ struct Sprite
 	SDL_FRect    rect;
 	vec2f        pivot;
 	color        tint;
+	bool         flip_horizontal;
 };
 
 void itu_lib_sprite_init(Sprite* sprite, SDL_Texture* texture, SDL_FRect rect);
@@ -17,6 +20,8 @@ SDL_FRect itu_lib_sprite_get_screen_rect(SDLContext* context, Sprite* sprite, Tr
 vec2f itu_lib_sprite_get_world_size(SDLContext* context, Sprite* sprite, Transform* transform);
 void itu_lib_sprite_render(SDLContext* context, Sprite* sprite, Transform* transform);
 void itu_lib_sprite_render_debug(SDLContext* context, Sprite* sprite, Transform* transform);
+
+#endif // ITU_LIB_SPRITE_HPP
 
 #if (defined ITU_LIB_SPRITE_IMPLEMENTATION) || (defined ITU_UNITY_BUILD)
 
@@ -83,7 +88,7 @@ void itu_lib_sprite_render(SDLContext* context, Sprite* sprite, Transform* trans
 		&rect_dst,
 		(-transform->rotation) * RAD_2_DEG,
 		&pivot_dst,
-		SDL_FLIP_NONE
+		sprite->flip_horizontal ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE
 	);
 }
 
@@ -96,5 +101,3 @@ void itu_lib_sprite_render_debug(SDLContext* context, Sprite* sprite, Transform*
 	itu_lib_render_draw_point(context->renderer, pos, 5, COLOR_YELLOW);
 }
 #endif // ITU_LIB_SPRITE_IMPLEMENTATION
-
-#endif // ITU_LIB_SPRITE_HPP
