@@ -9,7 +9,7 @@ FILE(COPY data DESTINATION ${CMAKE_BINARY_DIR})
 # 3rd party libraries
 add_subdirectory(lib/SDL)
 add_subdirectory(lib/box2d)
-add_subdirectory(lib/imgui)
+# add_subdirectory(lib/imgui)
 
 # our libraries
 include_directories(lib/stb)

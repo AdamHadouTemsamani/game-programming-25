@@ -64,12 +64,19 @@ typedef struct PlayerData
 
 	bool grounded;
 
-	// runtime (jupm)
+	// runtime (jump)
 	float g;   // gravity (for current jump)
 	vec2f p_0; // initial position (for current jump)
 	float v_0; // initial VERTICAL velocity (for current jump)
 	float v_x; // initial foot speed (for current jump)
 	float t_h; // jump duration (for current jump)
+
+	//dash 
+	bool is_dashing;
+	int dash_direction;
+	float dash_time; // time left in dash
+	float player_dash_speed;
+
 } PlayerData;
 
 static float player_dynamic_gravity = -9.8f;
@@ -139,6 +146,30 @@ void clutter_apply_impulse_random(b2ShapeId clutte_entity, b2Vec2 direction, flo
 	b2Body_ApplyLinearImpulse(body_id, impulse, point, true);
 }
 
+// dash helper functions
+void player_start_dash(PlayerData* data, int direction)
+{
+	data->is_dashing = true;
+	data->dash_direction = direction;
+	data->dash_time = 0.2f; // dash lasts 0.2 seconds
+}
+
+void player_stop_dash(PlayerData* data)
+{
+	data->is_dashing = false;
+	data->dash_direction = 0;
+	data->dash_time = 0;
+}
+
+void player_update_dynamic(PlayerData* data, Entity* player)
+{
+	b2Vec2 cur = b2Body_GetLinearVelocity(e->body_id);
+    cur.x = data->dash_direction * data->player_dash_speed;
+    b2Body_SetLinearVelocity(e->body_id, cur);
+}
+
+
+
 static void game_init(SDLContext* context, GameState* state)
 {
 	// allocate memory
@@ -152,6 +183,11 @@ static void game_init(SDLContext* context, GameState* state)
 	state->player_data.h   = 3.0f;
 	state->player_data.x_h = 1.5f;
 	state->player_data.v_x = 5.0f;
+
+	// initialize dash data
+	state->player_data.is_dashing = false;
+	state->player_data.dash_direction = 0;
+	state->player_data.dash_time = 0;
 
 	// texture atlases
 	state->atlas = texture_create(context, "data/kenney/tiny_dungeon_packed.png", SDL_SCALEMODE_NEAREST);
@@ -193,7 +229,7 @@ static void game_reset(SDLContext* context, GameState* state)
 			b2BodyDef body_def = b2DefaultBodyDef();
 			body_def.type = b2_dynamicBody;
 			body_def.fixedRotation = true;
-			body_def.position = (b2Vec2){ 0, 0 };
+			body_def.position = b2Vec2{ 0, 0 };
 
 			b2ShapeDef shape_def = b2DefaultShapeDef();
 			shape_def.density = 1; // NOTE: default density of 0 will mess with collisions and gravity!
@@ -215,11 +251,28 @@ static void game_reset(SDLContext* context, GameState* state)
 	{
 		b2BodyDef body_def = b2DefaultBodyDef();
 		body_def.type = b2_staticBody;
-		body_def.position = (b2Vec2){ 0, -3 };
+		body_def.position = b2Vec2{ 0, -3 };
 		b2ShapeDef shape_def = b2DefaultShapeDef();
 
 		shape_def.filter.categoryBits = COLLISION_FILTER_GROUND;
 		b2Polygon polygon = b2MakeBox(32.0f, 1.0f);
+
+		Entity* entity = entity_create(state);
+		entity->body_id = b2CreateBody(state->world_id, &body_def);
+		b2CreatePolygonShape(entity->body_id, &shape_def, &polygon);
+	}
+
+	// kinetic platform 
+	{
+		b2BodyDef body_def = b2DefaultBodyDef();
+		body_def.type = b2_kinematicBody;
+		body_def.position = b2Vec2{ 6, 0 };
+		body_def.linearVelocity = b2Vec2{ -1, 0 };
+		body_def.fixedRotation = true;
+		b2ShapeDef shape_def = b2DefaultShapeDef();
+
+		shape_def.filter.categoryBits = COLLISION_FILTER_GROUND;
+		b2Polygon polygon = b2MakeBox(2.0f, 0.25f);
 
 		Entity* entity = entity_create(state);
 		entity->body_id = b2CreateBody(state->world_id, &body_def);
@@ -255,7 +308,7 @@ static void game_reset(SDLContext* context, GameState* state)
 			vec2f size = itu_lib_sprite_get_world_size(context, &entity->sprite, &entity->transform);
 			vec2f offset = -mul_element_wise(size, entity->sprite.pivot - vec2f{ 0.5f, 0.5f });
 
-			body_def.position = (b2Vec2){ 3.0f + (i % 4) * 1.5f, (i / 4) * 3.0f };
+			body_def.position = b2Vec2{ 3.0f + (i % 4) * 1.5f, (i / 4) * 3.0f };
 			body_def.rotation = b2MakeRot(SDL_randf() * TAU);
 			body_def.angularVelocity = 1;
 			entity->body_id = b2CreateBody(state->world_id, &body_def);
@@ -374,7 +427,7 @@ static void game_update(SDLContext* context, GameState* state)
 	for(int i = 0; i < worl_sensor_events.beginCount; ++i)
 	{
 		b2SensorBeginTouchEvent* sensor_event = &worl_sensor_events.beginEvents[i];
-		b2Vec2 direction = (b2Vec2) { 0, 1 };
+		b2Vec2 direction = b2Vec2{ 0, 1 };
 
 		float vel_sq = length_sq(state->player->velocity);
 		if(SDL_fabsf(vel_sq) < FLOAT_EPSILON)
