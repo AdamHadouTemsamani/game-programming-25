@@ -9,6 +9,7 @@ foreach(file_src ${file_src_list})
 
 	target_link_libraries(${targetname} PRIVATE SDL3::SDL3)
 	target_link_libraries(${targetname} PRIVATE SDL3_mixer::SDL3_mixer)
+	target_link_libraries(${targetname} PRIVATE SDL3_ttf::SDL3_ttf)
 	target_link_libraries(${targetname} PRIVATE box2d::box2d)
 	target_link_libraries(${targetname} PRIVATE imgui)
 endforeach()

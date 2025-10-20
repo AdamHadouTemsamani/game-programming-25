@@ -8,12 +8,32 @@
 #include <itu_lib_engine.hpp>
 #endif
 
+
+
 struct PhysicsData
 {
 	b2BodyId body_id;
-	
+
+	vec2f fixed_step_position;
+	float fixed_step_rotation;
+	vec2f fixed_step_velocity;
+	float fixed_step_torque;
+
 	vec2f velocity;
 	float torque;
+
+	bool ignore_position;
+	bool ignore_rotation;
+};
+
+struct PhysicsStaticData
+{
+	b2BodyId body_id;
+};
+
+struct ShapeData
+{
+	b2ShapeId shape_id;
 };
 
 void itu_sys_physics_init(SDLContext* context);
@@ -21,6 +41,7 @@ void itu_sys_physics_reset(const b2WorldDef* world_def);
 void itu_sys_physics_step(float fixed_delta);
 b2BodyId itu_sys_physics_add_body(void* entity, b2BodyDef* body_def);
 void* itu_sys_physics_get_entity(b2BodyId body_id);
+b2SensorEvents ity_sys_physics_get_sensor_events();
 void itu_sys_physics_debug_draw();
 
 
@@ -62,6 +83,7 @@ void itu_sys_physics_reset(const b2WorldDef* world_def)
 	if(b2World_IsValid(sys_physics_data.world_id))
 		b2DestroyWorld(sys_physics_data.world_id);
 
+	stbds_hmfree(sys_physics_data.map_b2body_entity);
 	sys_physics_data.world_id = b2CreateWorld(world_def);
 }
 
@@ -81,6 +103,12 @@ b2BodyId itu_sys_physics_add_body(void* entity, b2BodyDef* body_def)
 void* itu_sys_physics_get_entity(b2BodyId body_id)
 {
 	return stbds_hmget(sys_physics_data.map_b2body_entity, body_id);
+}
+
+b2SensorEvents ity_sys_physics_get_sensor_events()
+{
+	b2SensorEvents ret = b2World_GetSensorEvents(sys_physics_data.world_id);
+	return ret;
 }
 
 void itu_sys_physics_debug_draw()
@@ -184,5 +212,6 @@ void fn_box2d_wrapper_draw_capsule(b2Vec2 p1, b2Vec2 p2, float radius, b2HexColo
 	// No time (and hopefully no need) to make a more optimized version
 	fn_box2d_wrapper_draw_polygon(b2Transform_identity, vertices, MAX_POLYGON_VERTICES, radius, b2_color, context);
 }
+
 
 #endif // (defined ITU_SYS_PHYSICS_IMPLEMENTATION) || (define ITU_UNITY_BUILD)

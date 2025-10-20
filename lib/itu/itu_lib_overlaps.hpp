@@ -166,8 +166,6 @@ inline bool itu_lib_overlaps_circle_rect(vec2f circle_center, float circle_radiu
 
 inline bool itu_lib_overlaps_rect_rect(vec2f rect_min_0, vec2f rect_max_0, vec2f rect_min_1, vec2f rect_max_1)
 {
-	bool ret = false;
-
 	// NOTE: checking for edges that have the exact same x or y coord is perfecly valid (and probably better for heavily physics-based games),
 	//       BUT it creates contacts when objects are arranged in a perfect grid, which is annoying for grid-based games.
 	//       Could be worth making this a configurable option (either runtime with a variable or compile-time with a define)

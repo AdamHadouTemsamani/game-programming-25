@@ -1,4 +1,4 @@
-#define TEXTURE_PIXELS_PER_UNIT 64    // how many pixels of textures will be mapped to a single world unit
+#define TEXTURE_PIXELS_PER_UNIT 64   // how many pixels of textures will be mapped to a single world unit
 #define CAMERA_PIXELS_PER_UNIT  32   // how many pixels of windows will be used to render a single world unit
 
 #include <itu_unity_include.hpp>
@@ -120,10 +120,10 @@ void debug_ui_player_data(GameState* state)
 	ImGui::LabelText("position", "%4.2f   %4.2f", entity->transform.position.x, entity->transform.position.y);
 	ImGui::LabelText("velocity",  "%4.2f   %4.2f", entity->physics_data.velocity.x, entity->physics_data.velocity.y);
 	ImGui::LabelText("gravity", "%4.2f", data->g);
-	ImGui::LabelText("grounded", "%s", data->is_grounded ? "X" : "O");
-	ImGui::LabelText("Lcollide", "%s", data->is_colliding_left ? "X" : "O");
+	ImGui::LabelText("grounded", "%s", data->is_grounded        ? "X" : "O");
+	ImGui::LabelText("Lcollide", "%s", data->is_colliding_left  ? "X" : "O");
 	ImGui::LabelText("Rcollide", "%s", data->is_colliding_right ? "X" : "O");
-	ImGui::LabelText("Tcollide", "%s", data->is_colliding_top ? "X" : "O");
+	ImGui::LabelText("Tcollide", "%s", data->is_colliding_top   ? "X" : "O");
 	ImGui::Separator();
 	ImGui::LabelText("velocity desired",  "%4.2f   %4.2f", data->velocity_desired.x, data->velocity_desired.y);
 	ImGui::LabelText("velocity ground" ,  "%4.2f   %4.2f", data->velocity_ground.x, data->velocity_ground.y);
@@ -546,12 +546,12 @@ int main(void)
 				case SDL_EVENT_KEY_UP:
 					switch(event.key.key)
 					{
-						case SDLK_W: sdl_input_key_process(&context, BTN_TYPE_UP, &event);        break;
-						case SDLK_A: sdl_input_key_process(&context, BTN_TYPE_LEFT, &event);      break;
-						case SDLK_S: sdl_input_key_process(&context, BTN_TYPE_DOWN, &event);      break;
-						case SDLK_D: sdl_input_key_process(&context, BTN_TYPE_RIGHT, &event);     break;
-						case SDLK_Q: sdl_input_key_process(&context, BTN_TYPE_ACTION_0, &event);  break;
-						case SDLK_E: sdl_input_key_process(&context, BTN_TYPE_ACTION_1, &event);  break;
+						case SDLK_W: sdl_input_key_process(&context,     BTN_TYPE_UP, &event);        break;
+						case SDLK_A: sdl_input_key_process(&context,     BTN_TYPE_LEFT, &event);      break;
+						case SDLK_S: sdl_input_key_process(&context,     BTN_TYPE_DOWN, &event);      break;
+						case SDLK_D: sdl_input_key_process(&context,     BTN_TYPE_RIGHT, &event);     break;
+						case SDLK_Q: sdl_input_key_process(&context,     BTN_TYPE_ACTION_0, &event);  break;
+						case SDLK_E: sdl_input_key_process(&context,     BTN_TYPE_ACTION_1, &event);  break;
 						case SDLK_SPACE: sdl_input_key_process(&context, BTN_TYPE_SPACE, &event); break;
 					}
 

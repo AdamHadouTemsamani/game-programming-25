@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.12)
 
 project(gp25_exercises)
 
@@ -12,6 +12,7 @@ set(SDLMIXER_VENDORED OFF)
 # 3rd party libraries
 add_subdirectory(lib/SDL)
 add_subdirectory(lib/SDL_mixer)
+add_subdirectory(lib/SDL_ttf)
 add_subdirectory(lib/box2d)
 <<<<<<< HEAD
 # add_subdirectory(lib/imgui)

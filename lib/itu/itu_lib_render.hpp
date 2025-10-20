@@ -167,24 +167,24 @@ void itu_lib_render_draw_world_polygon(SDLContext* context, vec2f position, cons
 
 void itu_lib_render_draw_world_grid(SDLContext* context)
 {
-	const float spacing_min = 32;
-	const float spacing_max = 128;
+	// const float spacing_min = 32;
+	// const float spacing_max = 128;
 	
 	Camera* camera = context->camera_active;
 
 	float spacing = spacing = camera->pixels_per_unit * camera->zoom;
 
-	float scaling_factor = 1;
-	while(spacing > spacing_max)
-	{
-		spacing /= 2;
-		scaling_factor /= 2;
-	}
-	while(spacing < spacing_min)
-	{
-		spacing *= 2;
-		scaling_factor *= 2;
-	}
+	// float scaling_factor = 1;
+	// while(spacing > spacing_max)
+	// {
+	// 	spacing /= 2;
+	// 	scaling_factor /= 2;
+	// }
+	// while(spacing < spacing_min)
+	// {
+	// 	spacing *= 2;
+	// 	scaling_factor *= 2;
+	// }
 
 	
 	vec2f screen_size = vec2f { context->window_w, context->window_h };

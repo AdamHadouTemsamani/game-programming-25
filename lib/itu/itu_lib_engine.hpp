@@ -8,9 +8,12 @@
 
 #ifndef ITU_UNITY_BUILD
 #include <SDL3/SDL.h>
+#include <stb_ds.h>
 #include <stb_image.h>
 #include <itu_common.hpp>
+#include <imgui/imgui.h>
 #endif
+
 
 enum BtnType
 {
@@ -53,6 +56,10 @@ struct SDLContext
 	float delta;    // in seconds
 	float uptime;   // in seconds
 
+	SDL_Time elapsed_frame; // high precision timer
+	SDL_Time accumulator_physics;
+	int physics_steps_count;
+
 	Camera* camera_active;
 	Camera camera_default; // default camera
 
@@ -87,12 +94,19 @@ struct SDLContext
 	};
 	vec2f mouse_pos;
 	float mouse_scroll;
+
+	stbds_hm(SDL_Keycode, BtnType) mappings_keyboard;
+	stbds_hm(Uint8, BtnType)       mappings_mouse;
 };
+
+#define TRANSFORM_DEFAULT Transform { { 0, 0 }, { 1, 1 }, 0 }
 
 void camera_set_active(SDLContext* context, Camera* camera);
 SDL_FRect rect_global_to_screen(SDLContext* context, SDL_FRect rect);
-vec2f point_global_to_screen(SDLContext* context,vec2f p);
+vec2f point_global_to_screen(SDLContext* context, vec2f p);
 vec2f point_screen_to_global(SDLContext* context, vec2f p);
+vec2f point_screen_to_window(SDLContext* context, vec2f p);
+vec2f point_window_to_screen(SDLContext* context, vec2f p);
 void sdl_input_clear(SDLContext* context);
 void sdl_input_key_process(SDLContext* context, BtnType button_id, SDL_Event* event);
 SDL_Texture* texture_create(SDLContext* context, const char* path, SDL_ScaleMode mode);
@@ -114,6 +128,17 @@ void camera_set_active(SDLContext* context, Camera* camera)
 	rect.y = context->window_h * camera->normalized_screen_offset.y;
 
 	SDL_SetRenderViewport(context->renderer, &rect);
+}
+
+SDL_FRect camera_get_viewport_rect(SDLContext* context, Camera* camera)
+{
+	SDL_FRect rect;
+	rect.w = context->window_w * camera->normalized_screen_size.x;
+	rect.h = 0.99f * context->window_h * camera->normalized_screen_size.y;
+	rect.x = 0.99f * context->window_w * camera->normalized_screen_offset.x;
+	rect.y = 0.99f * context->window_h * camera->normalized_screen_offset.y;
+
+	return rect;
 }
 
 // converts the given rect to the viewport of the given camera
@@ -217,6 +242,28 @@ vec2f point_screen_to_global(SDLContext* context, vec2f p)
 	return ret;
 }
 
+vec2f point_screen_to_window(SDLContext* context, vec2f p)
+{
+	vec2f ret = p + mul_element_wise(context->camera_active->normalized_screen_offset, vec2f { WINDOW_W, WINDOW_H});
+	return ret;
+}
+
+vec2f point_window_to_screen(SDLContext* context, vec2f p)
+{
+	vec2f ret = p - mul_element_wise(context->camera_active->normalized_screen_offset, vec2f { WINDOW_W, WINDOW_H});
+	return ret;
+}
+
+void sdl_input_set_mapping_keyboard(SDLContext* context, SDL_Keycode key, BtnType input)
+{
+	stbds_hmput(context->mappings_keyboard, key, input);
+}
+
+void sdl_input_set_mapping_mouse(SDLContext* context, Uint8 key, BtnType input)
+{
+	stbds_hmput(context->mappings_mouse, key, input);
+}
+
 void sdl_input_clear(SDLContext* context)
 {
 	context->mouse_scroll = 0;
@@ -241,10 +288,65 @@ void sdl_input_mouse_button_process(SDLContext* context, BtnType button_id, SDL_
 	context->btn_isdown[button_id] = event->button.down;
 }
 
+
+// forward declaration
+bool itu_lib_imgui_process_sdl_event(SDL_Event* event);
+
+bool sdl_process_events(SDLContext* context)
+{
+	// input
+	bool ret = false;
+	SDL_Event event;
+	sdl_input_clear(context);
+
+	while(SDL_PollEvent(&event))
+	{
+		if(itu_lib_imgui_process_sdl_event(&event))
+			continue;
+		switch(event.type)
+		{
+			case SDL_EVENT_QUIT:
+				ret = true;
+				break;
+			// listen for mouse motion and store the absolute position in screen space
+			case SDL_EVENT_MOUSE_MOTION:
+			{
+				context->mouse_pos.x = event.motion.x;
+				context->mouse_pos.y = event.motion.y;
+				break;
+			}
+			// listen for mouse wheel and store the relative position in screen space
+			case SDL_EVENT_MOUSE_WHEEL:
+			{
+				context->mouse_scroll = event.wheel.y;
+				break;
+			}
+			case SDL_EVENT_MOUSE_BUTTON_DOWN:
+			case SDL_EVENT_MOUSE_BUTTON_UP:
+			{
+				int i = stbds_hmgeti(context->mappings_mouse, event.button.button);
+				if(i != -1)
+					sdl_input_mouse_button_process(context, context->mappings_mouse[i].value, &event);
+				break;
+			}
+			case SDL_EVENT_KEY_DOWN:
+			case SDL_EVENT_KEY_UP:
+			{
+				int i = stbds_hmgeti(context->mappings_keyboard, event.key.key);
+				if(i != -1)
+					sdl_input_key_process(context,  context->mappings_keyboard[i].value, &event);
+				break;
+			}
+		}
+	}
+
+	return ret;
+}
+
 SDL_Texture* texture_create(SDLContext* context, const char* path, SDL_ScaleMode mode)
 {
 	// texture could accept which pixel format it has as parameter, but this for now seems good enough
-	const SDL_PixelFormat pixel_format = SDL_PIXELFORMAT_ABGR8888;
+	const SDL_PixelFormat pixel_format = SDL_PIXELFORMAT_RGBA32;
 
 	// number of parameters is determined by the pixel format. If that is allowed to change in the future,
 	// we will need to acquire the correct one through some kind of mapping
@@ -256,7 +358,7 @@ SDL_Texture* texture_create(SDLContext* context, const char* path, SDL_ScaleMode
 	// TODO how do we recover from inability to load the asset? Do we want to?
 	SDL_assert(pixels);
 
-	SDL_Surface* surface = SDL_CreateSurfaceFrom(w, h, SDL_PIXELFORMAT_ABGR8888, pixels, w * num_components_requested);
+	SDL_Surface* surface = SDL_CreateSurfaceFrom(w, h, pixel_format, pixels, w * num_components_requested);
 
 	SDL_Texture* ret = SDL_CreateTextureFromSurface(context->renderer, surface);
 	SDL_SetTextureScaleMode(ret, mode);
@@ -301,5 +403,6 @@ void engine_artificial_delay(float delay_ms, float delay_spread_ms)
 	while(walltime_busywait - walltime_start < target_wait)
 		SDL_GetCurrentTime(&walltime_busywait);
 }
-					
+
+
 #endif // ITU_LIB_ENGINE_IMPLEMENTATION
